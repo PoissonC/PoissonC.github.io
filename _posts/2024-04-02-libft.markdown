@@ -95,7 +95,7 @@ By the basic understanding of what linking is, we can simply explain the static 
 
 ```The static library is just a group of object files that are put together.```
 
-But I am going to introduce you a useful tool, it's call `ar`, with this command, you can build the static library with archived  index, helps the linker (in compiler) to find the target functions more quickly.
+But I am going to introduce you a useful tool, it's call `ar`, with this command, you can build the static library with archived  index, helps the linker to find the target functions more quickly.
 
 This will generate a static library named as "libmy_staticlib.a":
 {% highlight bash %}
