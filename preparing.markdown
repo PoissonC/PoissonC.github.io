@@ -8,6 +8,6 @@ permalink: /preparing/
 
 Check out other contents maybe you will be interested in!
 
-# Learn how a C program works under an Operating System:
+# Learning how a C program works:
 
 [How a C program works? Linking, static and dynamic library](/cs/2024/04/02/libft.html)

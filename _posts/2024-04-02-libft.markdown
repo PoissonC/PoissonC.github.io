@@ -69,7 +69,7 @@ We compile them by the following commands:
 > gcc -c my_printf.c
 > gcc -c hello_world.c
 {% endhighlight %}
-These will generate "my_printf.o" and "hello_world.o", and we call gcc again to link them:
+These will generate "my_printf.o" and "hello_world.o", and we call gcc again to build the executable by these 2 files:
 {% highlight bash %}
 > gcc my_printf.o hello_world.o -o linking
 {% endhighlight %}
@@ -79,9 +79,13 @@ This will build an executable named as "linking", let's execute it:
 Hello, World!
 {% endhighlight %}
 
+I think you got the basic idea of linking, but this illustration is not enough to show you what linking is exactly. It can only shows how to reuse the binary without re-compilation.
+
 Here I provide a easy way to understand what linking is:
 
 ```Linking just simply "links" different binary files together to generate another binary file.```
+
+But this process is not simply about merging files; it's fundamentally concerned with resolving and connecting references to functions, variables, and other resources between these files. By doing so, linking ensures that function calls and variable references across different modules are accurately matched and accessible in the final binary file.
 
 I will explain it more in [How a C program works? The ELF file](/preparing/index.html).
 
