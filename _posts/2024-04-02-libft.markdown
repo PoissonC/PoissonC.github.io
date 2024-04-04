@@ -1,0 +1,227 @@
+---
+layout: post
+title:  "How a C program works? Linking, static and dynamic library"
+date:   2024-04-02 01:24:25 +0700
+categories: cs
+---
+
+## Introduction
+In the "How a C program works?" series, I am going to explain what is happening when we execute a C program. In this article, I will introduce the concepts of linking ,static and dynamic library. I assume the readers already know how to code in C. But don't worry, if you know "Hello, World!" in C, that's enough...I think.
+
+In the whole series, I will use linux command line to illustrate the concept, so maybe you need the basic bash skills.
+
+## What is linking?
+
+# The Key is reusing
+
+In the case that we made a useful function, and we want to use it at many projects. We don't want to copy the same code all the time. Even though we can use "#include" to simply copy a file before compilation, it takes time and resource to compile the code. So if we can reuse the compiled binary, the world will be more wonderful!
+
+# How to reuse the compiled files?
+
+Here comes the "Object file". You may see the files with .o extension sometimes; they are the binary files made by the compiler(such as clang, gcc).
+
+We can make an object file by simpliy adding -c flag, you can see the explanation from help:
+{% highlight r %}
+> gcc --help
+...
+-c          Compile and assemble, but do not link.
+-o <file>   Place the output into <file>.
+...
+{% endhighlight %}
+If we don't use -o flag to specify the name of the output file, the default name of the output file is <filename>.o, for example the binary made from "hello_world.c" is "hello_world.o".
+
+So the process of making an executable can be divided to 2 steps, building object files, and link them to generate the final executable file.
+
+# Let's link it!
+
+The first C program that most people learn is to print a "Hello, World!" string, right?
+
+{% highlight C %}
+#include <stdio.h>
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}
+{% endhighlight %}
+But for illustration, let's do some useless trick, we divide this code to 2 parts:
+
+The first part we name it as "hello_world.c", it will call "my_printf" instead of the printf in standard library:
+{% highlight C %}
+// hello_world.c
+void  my_printf(char *str);
+int main() {
+    my_printf("Hello, World!\n");
+    return 0;
+}
+{% endhighlight %}
+
+The second part we name it as "my_printf.c", it defines the function "my_printf":
+{% highlight C %}
+// my_printf.c
+#include <stdio.h>
+void  my_printf(char *str) {
+    printf("%s", str);
+}
+{% endhighlight %}
+
+We compile them by the following commands:
+{% highlight bash %}
+> gcc -c my_printf.c
+> gcc -c hello_world.c
+{% endhighlight %}
+These will generate "my_printf.o" and "hello_world.o", and we call gcc again to link them:
+{% highlight bash %}
+> gcc my_printf.o hello_world.o -o linking
+{% endhighlight %}
+This will build an executable named as "linking", let's execute it:
+{% highlight bash %}
+> ./linking
+Hello, World!
+{% endhighlight %}
+
+Here I provide a easy way to understand what linking is:
+
+```Linking just simply "links" different binary files together to generate another binary file.```
+
+I will explain it more in [How a C program works? The ELF file](/preparing/index.html).
+
+## Easy begin, static library
+
+By the basic understanding of what linking is, we can simply explain the static library in one sentence:
+
+```The static library is just a group of object files that are put together.```
+
+But I am going to introduce you a useful tool, it's call `ar`, with this command, you can build the static library with archived  index, helps the linker (in compiler) to find the target functions more quickly.
+
+This will generate a static library named as "libmy_staticlib.a":
+{% highlight bash %}
+> ar -rcs libmy_staticlib.a my_printf.o
+{% endhighlight %}
+And we use this static library to compile the program:
+{% highlight bash %}
+> gcc hello_world.o libmy_staticlib.a -o staticLib
+{% endhighlight %}
+We can also execute it:
+{% highlight bash %}
+> ./staticLib
+Hello, World!
+{% endhighlight %}
+## Standard library, dynamic?
+
+# Dynamic library
+Besides static library, the other kind of library is called dynamic library. To distinguish them simply by their name, "dynamic" means the contents needed from the library are not copied into the target binary file while the "static" indicates the contents needed from the library will be copied directly into the target binary file.
+
+I will provide a clear illustration to show what a dynamic library is.
+
+Let's take a look to the origin version of the "Hello, World!" code:
+{% highlight C %}
+#include <stdio.h>
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}
+{% endhighlight %}
+
+We are now calling a function that helps us to output the string, and to call this function, we add the "#include \<stdio.h\>" at the first line. This line will copy all the content inside stdio.h to the current file before being compiled. But if you try to read the stdio.h, you will find that there is no function definition in it.
+
+# Making our own dynamic library
+
+If there is no function definition in the header file, how do we know what the functions do?
+
+Let's make a little experiment. Compile the "my_printf.c" without flags, which means the compiler will compile, assemble and "link":
+
+{% highlight C %}
+// hello_world.c
+void  my_printf(char *str);
+int main() {
+    my_printf("Hello, World!\n");
+    return 0;
+}
+{% endhighlight %}
+
+It outputs the following error message:
+{% highlight bash %}
+> gcc my_printf.c
+/usr/bin/ld: /tmp/ccmAg7qR.o: in function `main':
+hello_world.c:(.text+0x13): undefined reference to `my_printf'
+collect2: error: ld returned 1 exit status
+{% endhighlight %}
+
+So this is what will happen when we try to build an executable file with an undefined function. Back to the previous example, why can we use the standard library without the function definition? Well, the answer is simple, beacuse the compiler knows the function.
+
+Let's make some efforts to make it work. First, compile our my_printf.c with -c and -fPIC flags.
+{% highlight C %}
+// my_printf.c
+#include <stdio.h>
+void  my_printf(char *str) {
+	printf("%s", str);
+}
+{% endhighlight %}
+{% highlight bash %}
+> gcc -c -fPIC my_printf.c
+{% endhighlight %}
+And use gcc again with following line to build the dynamic library:
+{% highlight bash %}
+> gcc my_printf.o -shared -o libmy_printf.so
+{% endhighlight %}
+Beware that do NOT put these 2 lines as 1 line command, it will just output a single object file with the name of "libmy_printf.so", not really a "shared library".
+
+And then run this command to compile hello_world.c:
+{% highlight bash %}
+> gcc hello_world.c  -L. -lmy_printf -o dynamicLib
+{% endhighlight %}
+Execute the dynamicLib:
+{% highlight bash %}
+> ./dynamicLib
+./dynamicLib: error while loading shared libraries: libmy_printf.so: cannot open shared object file: No such file or directory
+{% endhighlight %}
+If you see this error output, it means you did it right. The exectutable "dynamicLib" tried to find the shared library outside its content!
+
+This is because the -L flag only finds the library during compilation, not to address the directory into the executable.
+
+So we need to address where our shared library is before executing it:
+{% highlight bash %}
+> LD_LIBRARY_PATH=./ ./dynamicLib
+Hello, World!
+{% endhighlight %}
+
+When we execute a program which uses "dynamic library", it will try to find the binary file of the target library and load it into memory.
+
+# Let me explain what we have done just now:
+
+First we created an object file with -fPIC flag, this means we don't assign the absolute memory address of the output compiled file. This ensures the consistency of the library (check: [How a C program works? The ELF file](/preparing/index.html)).
+
+And then, we use this object file to generate a shared library, create the executable with our hello_world.c and this generated library.
+
+At the last step, We execute ./dynamicLib by assigning the library directory.
+
+# One last thing before heading to conclusion
+
+I want to proof that the content of dynamic library is not included in our executable. Although we already know the executable using dynamic libraries will find where the library is, it's not obvious enough.
+
+Let's check the file size by using ll:
+{% highlight bash %}
+> ll
+...
+-rwxr-xr-x  1 poissonc poissonc 16032 Apr  2 16:24 linking
+-rwxr-xr-x  1 poissonc poissonc 16032 Apr  2 16:41 staticLib
+-rwxr-xr-x  1 poissonc poissonc 15952 Apr  2 17:15 dynamicLib
+...
+{% endhighlight %}
+Number 16032 and 15952 denote the size of the file. We can see that the size of "linking" and "staticLib" are the same, and "dynamicLib" is less than them!
+
+So if we want to execute a program that uses any dynamic library, it needs its "dependency", otherwise, there is no the function definition in it.
+
+We also know that all the standard libraries are dynamic libraries since we don't assign the library when we compile our program.
+
+## Conclusion
+
+If you are a gamer, now you understand why we need to install Microsoft Visual C++ Redistributable Package for some games, they are all dynamic library! (The extension of dynamic library in Windows is .dll)
+
+In the next article, I will lead you to read through the details of an exectuble (ELF file), to give a further insight of what is happening when we execute a C program.
+
+# See more:
+
+[How a C program works? The ELF file](/preparing/index.html)
+
+[How a C program works? Virtual memory](/preparing/index.html)
